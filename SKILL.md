@@ -1,7 +1,17 @@
 ---
 name: system-monitor
-description: "Real-time system metrics monitoring (CPU, memory, disk, network, processes). Use when: user asks to check system status, cpu usage, memory usage, disk space, network traffic, running processes, or system performance. Supports macOS and Linux. Tools: top, htop, df, netstat, iostat, vm_stat, host."
-metadata: { "openclaw": { "emoji": "📊", "requires": { "bins": ["top", "df", "vm_stat"] } } }
+description: "Real-time system metrics monitoring (CPU, memory, disk, network, processes). Use when: user asks to check system status, cpu usage, memory usage, disk space, network traffic, running processes, or system performance. Supports macOS and Linux. Tools: top, htop, df, iostat, vm_stat, host, free, lsof, uptime."
+metadata:
+  openclaw:
+    emoji: "📊"
+    requires:
+      bins:
+        - top
+        - df
+        - vm_stat
+        - free
+        - lsof
+        - uptime
 ---
 
 # System Monitor Skill
@@ -19,6 +29,17 @@ Monitor real-time system metrics including CPU, memory, disk, network, and proce
 - "Network traffic" / "Network usage"
 - "Running processes" / "Top processes"
 - "System performance" / "System load"
+
+## Setup
+
+Some tools may need installation via Homebrew:
+
+```bash
+# Install optional enhanced tools
+brew install htop      # Enhanced top (better UI)
+brew install nettop    # Real-time network monitoring (macOS)
+brew install iostat    # I/O statistics (Linux)
+```
 
 ## Platform Detection
 
@@ -64,6 +85,13 @@ top -l 1 -n 0 -s 0 | awk '/CPU usage/ {print}'
 
 # Linux  
 top -bn1 | grep "Cpu(s)"
+```
+
+### JSON-friendly (scripting)
+
+```bash
+# macOS: CPU stats with specific fields
+top -l 1 -n 0 -s 0 -stats pid,pcpu,pmem,comm
 ```
 
 ## Memory Usage
@@ -139,8 +167,6 @@ du -h --max-depth=1 | sort -h
 ```
 
 ## Network Statistics
-
-> **Note**: `netstat` is deprecated on macOS. Use `nettop` or `lsof` instead.
 
 ### macOS
 
@@ -242,10 +268,61 @@ echo "=== Disk ===" && df -h /
 echo "=== Load ===" && uptime
 ```
 
+## Bundled Scripts
+
+### system-stats.sh
+
+A combined system stats script for quick health checks:
+
+```bash
+#!/bin/bash
+# Combined system stats - run from skills/system-monitor/scripts/
+
+PLATFORM=$(uname -s)
+
+echo "=== System Stats ==="
+echo "Time: $(date)"
+echo "Platform: $PLATFORM"
+echo ""
+
+if [ "$PLATFORM" = "Darwin" ]; then
+    echo "--- CPU ---"
+    top -l 1 -n 0 -s 0 | grep "CPU usage"
+    echo ""
+    
+    echo "--- Memory ---"
+    top -l 1 -n 0 | grep "PhysMem"
+    vm_stat | head -5
+    echo ""
+    
+    echo "--- Disk ---"
+    df -h / | tail -1
+    echo ""
+    
+    echo "--- Load Average ---"
+    uptime
+else
+    echo "--- CPU ---"
+    top -bn1 | head -5
+    echo ""
+    
+    echo "--- Memory ---"
+    free -h
+    echo ""
+    
+    echo "--- Disk ---"
+    df -h / | tail -1
+    echo ""
+    
+    echo "--- Load Average ---"
+    uptime
+fi
+```
+
 ## Notes
 
 - macOS uses `vm_stat` for memory, Linux uses `free`
 - `top` output format differs between platforms
 - Use `hostinfo` on macOS for system overview
-- `netstat` is deprecated on macOS; use `lsof` or `nettop`
+- Use `lsof` or `nettop` instead of deprecated `netstat`
 - For continuous monitoring, use `watch` command or run `top` in loop
